@@ -27,49 +27,77 @@ const Home = () => {
         }
     };
 
-    const deleteDoctor = async (id) => {
-        if (!doctorInfo) {
-            return
-        }
+    const fetchDoctorRelatedData = async (id) => {
         try {
-            if(doctorAppointments.length > 0) {
-                const deleteAppointmentJobs = doctorAppointments.map((appointment) => {
-                    return axios.delete(`https://fed-medical-clinic-api.vercel.app/appointments/${appointment.id}`, {
-                        headers: {
-                            Authorization: `Bearer ${token}`,
-                        }
-                    });
-                });
-                await Promise.all(deleteAppointmentJobs);
-            }
-
-            if (doctorPatients.length > 0) {
-                const deletePatientAssigned = doctorPatients.map((patient) => {
-                    return axios.delete(`https://fed-medical-clinic-api.vercel.app/patients/${patient.id}`, {
-                        headers: {
-                            Authorization: `Bearer ${token}`,
-                        }
-                    });
-                });
-                await Promise.all(deletePatientAssigned);
-            }
-
-            await axios.delete(`https://fed-medical-clinic-api.vercel.app/doctors/${id}`, {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                }
-            });
-            console.log('Doctor Deleted');
-
-            setDoctorAppointments([])
-            setDoctorPatients([])
-            setDoctorsInfo(null)
-        } catch (e) {
-            console.error(e);
-            
+            const [appointmentsRes, patientsRes] = await Promise.all([
+                axios.get(`https://fed-medical-clinic-api.vercel.app/appointments/${id}`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                }),
+                axios.get(`https://fed-medical-clinic-api.vercel.app/patients/${id}`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                }),
+            ]);
+            setDoctorAppointments(appointmentsRes.data);
+            setDoctorPatients(patientsRes.data);
+        } catch (error) {
+            console.error("Error fetching doctor-related data:", error.response?.data || error.message);
         }
     };
+    
 
+    const deleteDoctor = async (id) => {
+        if (!doctorInfo) {
+            return;
+        }
+    
+        try {
+            console.log("Fetching related data...");
+            await fetchDoctorRelatedData(id); // Ensure related data is up-to-date
+    
+            console.log("Appointments to delete:", doctorAppointments);
+            console.log("Patients to delete:", doctorPatients);
+    
+            // Delete appointments first
+            if (doctorAppointments.length > 0) {
+                const deleteAppointmentJobs = doctorAppointments.map((appointment) =>
+                    axios.delete(`https://fed-medical-clinic-api.vercel.app/appointments/${appointment.id}`, {
+                        headers: { Authorization: `Bearer ${token}` },
+                    })
+                );
+                await Promise.all(deleteAppointmentJobs);
+                console.log("All appointments deleted.");
+            }
+    
+            // Delete patients next
+            if (doctorPatients.length > 0) {
+                const deletePatientJobs = doctorPatients.map((patient) =>
+                    axios.delete(`https://fed-medical-clinic-api.vercel.app/patients/${patient.id}`, {
+                        headers: { Authorization: `Bearer ${token}` },
+                    })
+                );
+                await Promise.all(deletePatientJobs);
+                console.log("All patients deleted.");
+            }
+    
+            // Delete the doctor
+            await axios.delete(`https://fed-medical-clinic-api.vercel.app/doctors/${id}`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            console.log("Doctor deleted.");
+    
+            // Clear state
+            setDoctorAppointments([]);
+            setDoctorPatients([]);
+            setDoctorsInfo(null);
+    
+            // Optionally update doctor list
+            setDoctors((prevDoctors) => prevDoctors.filter((doctor) => doctor.id !== id));
+        } catch (e) {
+            console.error("Error deleting doctor or related data:", e.response?.data || e.message);
+            alert("Failed to delete doctor. Please try again.");
+        }
+    };
+    
 
 
     useEffect(() => {
@@ -95,19 +123,21 @@ const Home = () => {
                 {
                     doctors && doctors.map((doctor) => {
                         return (
-                            // Here we're using a polymorphic mantine component
-                            // This is a card, but we're passing in a Flex component to be the root element
-                            // That means the card will be rendered as a Flex component, but still have the styling of a card
-                            // We can use the props of both the card and the Flex component
-                            // So here I've given Flex as the root component
-                            // That means I can use the justify and direction props of Flex, and use that to make sure the buttons pushed to the bottom
-                            // https://dev.to/thexdev/polymorphic-component-2737
+                          
                             <Card shadow="sm" component={Flex} justify={'space-between'} direction={'column'}>
                                 <h2>Dr {doctor.first_name} {doctor.last_name}</h2>
                                 <p>Specialisation: {doctor.specialisation}</p>
                                 <Flex w={'100%'} justify={'space-between'}>
                                     <button onClick={() => navigate(`/doctors/${doctor.id}`)}>View</button>
-                                    <button onClick={() => alert('Not implemented!')}>🗑️</button>
+                                    <button
+                                onClick={() => {
+                                    if (window.confirm('Are you sure you want to delete this doctor?')) {
+                                        deleteDoctor(doctor.id);
+                                    }
+                                }}
+                            >
+                                🗑️
+                            </button>
                                 </Flex>
                             </Card>
                         )
