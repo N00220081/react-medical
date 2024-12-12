@@ -1,6 +1,6 @@
 import { AuthProvider } from "./utils/useAuth";
 import { createContext } from "react";
-import { MantineProvider, AppShell, Header, Footer } from '@mantine/core';
+import { MantineProvider, AppShell, Header, Footer} from "@mantine/core";
 
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 
@@ -11,8 +11,13 @@ import ProtectedRoute from './components/ProtectedRoute'
 
 import Home from './pages/Home';
 import SingleDoctor from "./pages/doctors/SingleDoctor";
-import Create from './pages/doctors/Create';
-import Edit from './pages/doctors/Edit'
+import DoctorCreate from './pages/doctors/Create';
+import DoctorEdit from './pages/doctors/Edit'
+
+import SinglePatient from "./pages/patients/SinglePatient";
+import PatientCreate from './pages/patients/Create';
+import PatientEdit from './pages/patients/Edit';
+
 
 export const UserContext = createContext();
 
@@ -38,9 +43,15 @@ const App = () => {
 
                                 {/* Doctor routes */}                                
                                 <Route path='/' element={<ProtectedRoute />}>
-                                    <Route path='/doctors/create' element={<Create />} />
-                                    <Route path='/doctors/:id/edit' element={<Edit />} />
+                                    <Route path='/doctors/create' element={<DoctorCreate />} />
+                                    <Route path='/doctors/:id/edit' element={<DoctorEdit />} />
                                     <Route path='/doctors/:id' element={<SingleDoctor />} />
+                                </Route>
+                                {/* Patient routes */}                                
+                                <Route path='/' element={<ProtectedRoute />}>
+                                    <Route path='/patients/create' element={<PatientCreate />} />
+                                    <Route path='/patients/:id/edit' element={<PatientEdit />} />
+                                    <Route path='/patients/:id' element={<SinglePatient />} />
                                 </Route>
                                 <Route path='/login' element={<LoginForm />} />
                                 <Route path='/register' element={<RegisterForm />} />

@@ -5,6 +5,7 @@ import { useAuth } from '../utils/useAuth';
 // So we use an alias 'MantineNavbar' to refer to the Mantine component
 import { Navbar as MantineNavbar, Button, Stack } from '@mantine/core';
 
+
 const Navbar = () => {
     const { logout, token } = useAuth();
 
