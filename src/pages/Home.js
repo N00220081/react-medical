@@ -2,9 +2,14 @@ import { useEffect, useState } from "react";
 import axios from 'axios'
 import { useLocation, useNavigate } from "react-router-dom";
 import { Card, SimpleGrid, Button, Text, Flex } from "@mantine/core";
+import { useAuth } from "../utils/useAuth";
 
 const Home = () => {
+    const { token } = useAuth();
     const [doctors, setDoctors] = useState([])
+    const [doctorInfo, setDoctorsInfo] = useState([null])
+    const [doctorAppointments, setDoctorAppointments] = useState([])
+    const [doctorPatients, setDoctorPatients] = useState([])
 
     const navigate = useNavigate();
 
@@ -21,6 +26,51 @@ const Home = () => {
             console.error(e);
         }
     };
+
+    const deleteDoctor = async (id) => {
+        if (!doctorInfo) {
+            return
+        }
+        try {
+            if(doctorAppointments.length > 0) {
+                const deleteAppointmentJobs = doctorAppointments.map((appointment) => {
+                    return axios.delete(`https://fed-medical-clinic-api.vercel.app/appointments/${appointment.id}`, {
+                        headers: {
+                            Authorization: `Bearer ${token}`,
+                        }
+                    });
+                });
+                await Promise.all(deleteAppointmentJobs);
+            }
+
+            if (doctorPatients.length > 0) {
+                const deletePatientAssigned = doctorPatients.map((patient) => {
+                    return axios.delete(`https://fed-medical-clinic-api.vercel.app/patients/${patient.id}`, {
+                        headers: {
+                            Authorization: `Bearer ${token}`,
+                        }
+                    });
+                });
+                await Promise.all(deletePatientAssigned);
+            }
+
+            await axios.delete(`https://fed-medical-clinic-api.vercel.app/doctors/${id}`, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                }
+            });
+            console.log('Doctor Deleted');
+
+            setDoctorAppointments([])
+            setDoctorPatients([])
+            setDoctorsInfo(null)
+        } catch (e) {
+            console.error(e);
+            
+        }
+    };
+
+
 
     useEffect(() => {
         // We can't make useEffect itself async, so we call an async function from inside it
