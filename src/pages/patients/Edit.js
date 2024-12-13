@@ -65,40 +65,48 @@ const Edit = () => {
   }, [id, token]);
 
   // Handle form submission
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+    console.log("Debug: Appointment ID being sent in the URL:", id);
+  
     const payload = {
-      first_name: form.values.first_name,
-      last_name: form.values.last_name,
-      email: form.values.email,
-      phone: form.values.phone,
-      address: form.values.address,
-      // Convert Date to ISO 8601 string (e.g., "YYYY-MM-DD")
-      date_of_birth: form.values.date_of_birth.toISOString().split('T')[0],
+      appointment_date: Math.floor(
+        form.values.appointment_date.getTime() / 1000
+      ), // Convert Date to UNIX timestamp
+      doctor_id: parseInt(form.values.doctor_id, 10),
+      patient_id: parseInt(form.values.patient_id, 10),
     };
   
-    axios
-      .patch(`https://fed-medical-clinic-api.vercel.app/patients/${id}`, payload, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
-      .then((res) => {
-        console.log("Patient updated successfully:", res.data);
-        navigate(`/patients/${res.data.id}`);
-      })
-      .catch((err) => {
-        console.error("Error updating patient:", err);
-  
-        if (err.response?.status === 422) {
-          const errors = err.response.data.error.issues || [];
-          form.setErrors(
-            Object.fromEntries(errors.map((error) => [error.path[0], error.message]))
-          );
-        } else {
-          form.setErrors({ general: 'An unexpected error occurred. Please try again.' });
+    try {
+      const res = await axios.patch(
+        `https://fed-medical-clinic-api.vercel.app/appointments/${id}`,
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         }
-      });
+      );
+      console.log("Appointment updated successfully:", res.data);
+      navigate(`/appointments/${res.data.id}`);
+    } catch (err) {
+      console.error("Error updating appointment:", err);
+  
+      if (err.response?.status === 404) {
+        alert("The appointment you are trying to update does not exist.");
+      } else if (err.response?.status === 422) {
+        const errors = err.response.data.error.issues || [];
+        form.setErrors(
+          Object.fromEntries(errors.map((error) => [error.path[0], error.message]))
+        );
+      } else {
+        form.setErrors({
+          general: "An unexpected error occurred. Please try again.",
+        });
+      }
+    }
   };
+  
+  
 
   if (loading) {
     return <Loader />;
