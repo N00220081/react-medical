@@ -1,7 +1,17 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Card, SimpleGrid, Button, Text, Flex } from "@mantine/core";
+import {
+  Card,
+  Grid,
+  Button,
+  Text,
+  Flex,
+  Title,
+  Divider,
+  Box,
+  Container,
+} from "@mantine/core";
 import { useAuth } from "../utils/useAuth";
 
 const Home = () => {
@@ -13,273 +23,204 @@ const Home = () => {
 
   const msg = useLocation()?.state?.msg || null;
 
-  const getDoctors = async () => {
+  const fetchData = async () => {
     try {
-      const res = await axios.get(
-        `https://fed-medical-clinic-api.vercel.app/doctors/`
-      );
-      setDoctors(res.data);
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const getPatients = async () => {
-    try {
-      const res = await axios.get(
-        `https://fed-medical-clinic-api.vercel.app/patients/`,
-        {
+      const [doctorsRes, patientsRes, appointmentsRes] = await Promise.all([
+        axios.get(`https://fed-medical-clinic-api.vercel.app/doctors/`),
+        axios.get(`https://fed-medical-clinic-api.vercel.app/patients/`, {
           headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      setPatients(res.data);
-    } catch (e) {
-      console.error("Error fetching patients:", e);
-    }
-  };
-
-  const getAppointments = async () => {
-    try {
-      const res = await axios.get(
-        `https://fed-medical-clinic-api.vercel.app/appointments/`,
-        {
+        }),
+        axios.get(`https://fed-medical-clinic-api.vercel.app/appointments/`, {
           headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+        }),
+      ]);
 
-      const appointmentsWithNames = await Promise.all(
-        res.data.map(async (appointment) => {
-          try {
-            const [doctorRes, patientRes] = await Promise.all([
-              axios.get(
-                `https://fed-medical-clinic-api.vercel.app/doctors/${appointment.doctor_id}`,
-                { headers: { Authorization: `Bearer ${token}` } }
-              ),
-              axios.get(
-                `https://fed-medical-clinic-api.vercel.app/patients/${appointment.patient_id}`,
-                { headers: { Authorization: `Bearer ${token}` } }
-              ),
-            ]);
-
-            return {
-              ...appointment,
-              doctorName: `Dr. ${doctorRes.data.first_name} ${doctorRes.data.last_name}`,
-              patientName: `${patientRes.data.first_name} ${patientRes.data.last_name}`,
-            };
-          } catch {
-            return {
-              ...appointment,
-              doctorName: "Unknown Doctor",
-              patientName: "Unknown Patient",
-            };
-          }
-        })
+      setDoctors(doctorsRes.data);
+      setPatients(patientsRes.data);
+      setAppointments(
+        await Promise.all(
+          appointmentsRes.data.map(async (appointment) => {
+            try {
+              const [doctorRes, patientRes] = await Promise.all([
+                axios.get(
+                  `https://fed-medical-clinic-api.vercel.app/doctors/${appointment.doctor_id}`,
+                  { headers: { Authorization: `Bearer ${token}` } }
+                ),
+                axios.get(
+                  `https://fed-medical-clinic-api.vercel.app/patients/${appointment.patient_id}`,
+                  { headers: { Authorization: `Bearer ${token}` } }
+                ),
+              ]);
+              return {
+                ...appointment,
+                doctorName: `Dr. ${doctorRes.data.first_name} ${doctorRes.data.last_name}`,
+                patientName: `${patientRes.data.first_name} ${patientRes.data.last_name}`,
+              };
+            } catch {
+              return {
+                ...appointment,
+                doctorName: "Unknown Doctor",
+                patientName: "Unknown Patient",
+              };
+            }
+          })
+        )
       );
-
-      setAppointments(appointmentsWithNames);
-    } catch (e) {
-      console.error("Error fetching appointments:", e);
-    }
-  };
-
-  const deletePatient = async (id) => {
-    try {
-      await axios.delete(
-        `https://fed-medical-clinic-api.vercel.app/patients/${id}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      setPatients((prevPatients) =>
-        prevPatients.filter((patient) => patient.id !== id)
-      );
-      console.log("Patient deleted.");
-    } catch (e) {
-      console.error("Error deleting patient:", e);
-      alert("Failed to delete patient. Please try again.");
-    }
-  };
-
-  const deleteDoctor = async (id) => {
-    try {
-      await axios.delete(
-        `https://fed-medical-clinic-api.vercel.app/doctors/${id}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      setDoctors((prevDoctors) =>
-        prevDoctors.filter((doctor) => doctor.id !== id)
-      );
-      console.log("Doctor deleted.");
-    } catch (e) {
-      console.error("Error deleting doctor:", e);
-      alert("Failed to delete doctor. Please try again.");
-    }
-  };
-
-  const deleteAppointment = async (id) => {
-    try {
-      await axios.delete(
-        `https://fed-medical-clinic-api.vercel.app/appointments/${id}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      setAppointments((prevAppointments) =>
-        prevAppointments.filter((appointment) => appointment.id !== id)
-      );
-      console.log("Appointment deleted.");
-    } catch (e) {
-      console.error("Error deleting appointment:", e);
-      alert("Failed to delete appointment. Please try again.");
+    } catch (error) {
+      console.error("Error fetching data:", error);
     }
   };
 
   useEffect(() => {
-    const fetchData = async () => {
-      await Promise.all([getDoctors(), getPatients(), getAppointments()]);
-    };
-
     fetchData();
   }, []);
 
-  if (!doctors.length) {
-    return <div>Loading...</div>;
+  const handleDelete = async (type, id) => {
+    const endpoints = {
+      doctor: `https://fed-medical-clinic-api.vercel.app/doctors/${id}`,
+      patient: `https://fed-medical-clinic-api.vercel.app/patients/${id}`,
+      appointment: `https://fed-medical-clinic-api.vercel.app/appointments/${id}`,
+    };
+
+    try {
+      await axios.delete(endpoints[type], {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (type === "doctor") setDoctors((prev) => prev.filter((d) => d.id !== id));
+      if (type === "patient") setPatients((prev) => prev.filter((p) => p.id !== id));
+      if (type === "appointment")
+        setAppointments((prev) => prev.filter((a) => a.id !== id));
+    } catch (error) {
+      console.error(`Error deleting ${type}:`, error);
+      alert(`Failed to delete ${type}. Please try again.`);
+    }
+  };
+
+  if (!doctors.length && !patients.length && !appointments.length) {
+    return <Text align="center">Loading...</Text>;
   }
 
   return (
-    <div>
+    <Container size="lg">
       {msg && (
-        <Text mb={10} color="red">
+        <Text mb={10} color="red" size="sm">
           {msg}
         </Text>
       )}
-      <Button mb={10} onClick={() => navigate("/doctors/create")}>
-        Create Doctor
-      </Button>
 
-      {/* Doctors Section */}
-      <Text mb={10} size="lg" weight={700}>
-        Doctors
-      </Text>
-      <SimpleGrid cols={3}>
+      <Title order={2} mb="lg" align="center">
+        Admin Dashboard
+      </Title>
+      <Flex justify="Flex-start" gap="md" mb="md">
+        <Button onClick={() => navigate("/doctors/create")}>Create Doctor</Button>
+        <Button onClick={() => navigate("/patients/create")}>Create Patient</Button>
+        <Button onClick={() => navigate("/appointments/create")}>Create Appointment</Button>
+      </Flex>
+
+      <Divider my="xl" label="Doctors" labelPosition="center" />
+     
+
+      <Grid gutter="lg">
         {doctors.map((doctor) => (
-          <Card
-            key={doctor.id}
-            shadow="sm"
-            component={Flex}
-            justify={"space-between"}
-            direction={"column"}
-          >
-            <h2>
-              Dr {doctor.first_name} {doctor.last_name}
-            </h2>
-            <p>Specialisation: {doctor.specialisation}</p>
-            <Flex w={"100%"} justify={"space-between"}>
-              <button onClick={() => navigate(`/doctors/${doctor.id}`)}>
-                View
-              </button>
-              <button
-                onClick={() => {
-                  if (
-                    window.confirm(
-                      "Are you sure you want to delete this doctor?"
-                    )
-                  ) {
-                    deleteDoctor(doctor.id);
+          <Grid.Col key={doctor.id} sm={6} md={4}>
+            <Card shadow="sm" padding="md">
+              <Text size="md" weight={600}>
+                Dr. {doctor.first_name} {doctor.last_name}
+              </Text>
+              <Text size="sm" color="dimmed">
+                Specialisation: {doctor.specialisation}
+              </Text>
+              <Divider my="sm" />
+              <Flex justify="space-between">
+                <Button size="xs" onClick={() => navigate(`/doctors/${doctor.id}`)}>
+                  View
+                </Button>
+                <Button
+                  size="xs"
+                  color="red"
+                  onClick={() =>
+                    window.confirm("Delete this doctor?") && handleDelete("doctor", doctor.id)
                   }
-                }}
-              >
-                🗑️
-              </button>
-            </Flex>
-          </Card>
+                >
+                  Delete
+                </Button>
+              </Flex>
+            </Card>
+          </Grid.Col>
         ))}
-      </SimpleGrid>
+      </Grid>
 
-      {/* Patients Section */}
-      <Text mt={20} mb={10} size="lg" weight={700}>
-        Patients
-      </Text>
-      <SimpleGrid cols={3}>
+      <Divider my="xl" label="Patients" labelPosition="center" />
+
+      <Grid gutter="lg">
         {patients.map((patient) => (
-          <Card
-            key={patient.id}
-            shadow="sm"
-            component={Flex}
-            justify={"space-between"}
-            direction={"column"}
-          >
-            <h2>
-              {patient.first_name} {patient.last_name}
-            </h2>
-            <p>Email: {patient.email}</p>
-            <p>Phone Number: {patient.phone}</p>
-            <p>Address: {patient.address}</p>
-            <Flex w={"100%"} justify={"space-between"}>
-              <button onClick={() => navigate(`/patients/${patient.id}`)}>
-                View
-              </button>
-              <button
-                onClick={() => {
-                  if (
-                    window.confirm(
-                      "Are you sure you want to delete this patient?"
-                    )
-                  ) {
-                    deletePatient(patient.id);
+          <Grid.Col key={patient.id} sm={6} md={4}>
+            <Card shadow="sm" padding="md">
+              <Text size="md" weight={600}>
+                {patient.first_name} {patient.last_name}
+              </Text>
+              <Text size="sm" color="dimmed">
+                {patient.email}
+              </Text>
+              <Divider my="sm" />
+              <Flex justify="space-between">
+                <Button size="xs" onClick={() => navigate(`/patients/${patient.id}`)}>
+                  View
+                </Button>
+                <Button
+                  size="xs"
+                  color="red"
+                  onClick={() =>
+                    window.confirm("Delete this patient?") && handleDelete("patient", patient.id)
                   }
-                }}
-              >
-                🗑️
-              </button>
-            </Flex>
-          </Card>
+                >
+                  Delete
+                </Button>
+              </Flex>
+            </Card>
+          </Grid.Col>
         ))}
-      </SimpleGrid>
+      </Grid>
 
-      {/* Appointments Section */}
-      <Text mt={20} mb={10} size="lg" weight={700}>
-        Appointments
-      </Text>
-      <SimpleGrid cols={3}>
+      <Divider my="xl" label="Appointments" labelPosition="center" />
+
+      <Grid gutter="lg">
         {appointments.map((appointment) => (
-          <Card
-            key={appointment.id}
-            shadow="sm"
-            component={Flex}
-            justify={"space-between"}
-            direction={"column"}
-          >
-            <h2>Appointment ID: {appointment.id}</h2>
-            <p>Patient: {appointment.patientName}</p>
-            <p>Doctor: {appointment.doctorName}</p>
-            <p>Date: {appointment.appointment_date}</p>
-            <Flex w={"100%"} justify={"space-between"}>
-              <button
-                onClick={() => navigate(`/appointments/${appointment.id}`)}
-              >
-                View
-              </button>
-              <button
-                onClick={() => {
-                  if (
-                    window.confirm(
-                      "Are you sure you want to delete this appointment?"
-                    )
-                  ) {
-                    deleteAppointment(appointment.id);
+          <Grid.Col key={appointment.id} sm={6} md={4}>
+            <Card shadow="sm" padding="md">
+              <Text size="md" weight={600}>
+                Appointment ID: {appointment.id}
+              </Text>
+              <Text size="sm" color="dimmed">
+                Doctor: {appointment.doctorName}
+              </Text>
+              <Text size="sm" color="dimmed">
+                Patient: {appointment.patientName}
+              </Text>
+              <Divider my="sm" />
+              <Flex justify="space-between">
+                <Button
+                  size="xs"
+                  onClick={() => navigate(`/appointments/${appointment.id}`)}
+                >
+                  View
+                </Button>
+                <Button
+                  size="xs"
+                  color="red"
+                  onClick={() =>
+                    window.confirm("Delete this appointment?") &&
+                    handleDelete("appointment", appointment.id)
                   }
-                }}
-              >
-                🗑️
-              </button>
-            </Flex>
-          </Card>
+                >
+                  Delete
+                </Button>
+              </Flex>
+            </Card>
+          </Grid.Col>
         ))}
-      </SimpleGrid>
-    </div>
+      </Grid>
+    </Container>
   );
 };
 

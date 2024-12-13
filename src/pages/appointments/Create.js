@@ -50,9 +50,9 @@ const Create = () => {
 
   const handleSubmit = async () => {
     const payload = {
-      appointment_date: Math.floor(
-        form.values.appointment_date.getTime() / 1000
-      ), // Convert Date to UNIX timestamp
+      appointment_date: form.values.appointment_date
+        .toISOString()
+        .split("T")[0],
       doctor_id: parseInt(form.values.doctor_id, 10),
       patient_id: parseInt(form.values.patient_id, 10),
     };
@@ -75,7 +75,9 @@ const Create = () => {
       if (err.response?.status === 422) {
         const errors = err.response.data.error.issues || [];
         form.setErrors(
-          Object.fromEntries(errors.map((error) => [error.path[0], error.message]))
+          Object.fromEntries(
+            errors.map((error) => [error.path[0], error.message])
+          )
         );
       } else {
         form.setErrors({

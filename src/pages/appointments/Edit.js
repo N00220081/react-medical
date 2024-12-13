@@ -1,19 +1,18 @@
 import axios from "axios";
 import { useNavigate, useParams } from "react-router-dom";
-import { useEffect, useState } from "react";
 import { useAuth } from "../../utils/useAuth";
 import { useForm } from "@mantine/form";
-import { Text, Button, Loader, Select } from "@mantine/core";
+import { Text, Button, Select } from "@mantine/core";
 import { DateInput } from "@mantine/dates";
+import { useEffect, useState } from "react";
 
-const Edit = () => {
+const EditAppointment = () => {
   const { token } = useAuth();
   const navigate = useNavigate();
-  const { id } = useParams();
-  const [loading, setLoading] = useState(true);
+  const { id } = useParams(); // To get the appointment ID from the route
   const [doctors, setDoctors] = useState([]);
   const [patients, setPatients] = useState([]);
-  const [formInitialized, setFormInitialized] = useState(false); // Tracks if form values are set
+  const [loading, setLoading] = useState(true);
 
   const form = useForm({
     initialValues: {
@@ -29,12 +28,10 @@ const Edit = () => {
     },
   });
 
+  // Fetch doctors, patients, and appointment details
   useEffect(() => {
-    let isMounted = true;
-
     const fetchData = async () => {
       try {
-        // Fetch doctors and patients concurrently
         const [doctorsRes, patientsRes, appointmentRes] = await Promise.all([
           axios.get(`https://fed-medical-clinic-api.vercel.app/doctors/`, {
             headers: { Authorization: `Bearer ${token}` },
@@ -50,43 +47,35 @@ const Edit = () => {
           ),
         ]);
 
-        if (isMounted) {
-          setDoctors(doctorsRes.data);
-          setPatients(patientsRes.data);
+        setDoctors(doctorsRes.data);
+        setPatients(patientsRes.data);
 
-          // Set initial form values only once
-          if (!formInitialized) {
-            const appointment = appointmentRes.data;
-            form.setValues({
-              appointment_date: new Date(appointment.appointment_date * 1000),
-              doctor_id: appointment.doctor_id.toString(),
-              patient_id: appointment.patient_id.toString(),
-            });
-            setFormInitialized(true); // Mark form as initialized
-          }
+        const appointment = appointmentRes.data;
 
-          setLoading(false);
-        }
+        // Populate the form with the fetched appointment details
+        form.setValues({
+          appointment_date: new Date(appointment.appointment_date * 1000),
+          doctor_id: appointment.doctor_id.toString(),
+          patient_id: appointment.patient_id.toString(),
+        });
+
+        setLoading(false);
       } catch (err) {
-        console.error("Error loading data:", err);
+        console.error("Error fetching data:", err);
         setLoading(false);
       }
     };
 
     fetchData();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [id, token, formInitialized]); // Ensure useEffect doesn't run unnecessarily
+  }, [id, token]);
 
   const handleSubmit = async () => {
     const payload = {
       appointment_date: Math.floor(
         form.values.appointment_date.getTime() / 1000
       ), // Convert Date to UNIX timestamp
-      doctor_id: parseInt(form.values.doctor_id, 10),
-      patient_id: parseInt(form.values.patient_id, 10),
+      doctor_id: form.values.doctor_id,
+      patient_id: form.values.patient_id,
     };
 
     try {
@@ -118,7 +107,7 @@ const Edit = () => {
   };
 
   if (loading) {
-    return <Loader />;
+    return <Text>Loading...</Text>;
   }
 
   return (
@@ -165,4 +154,4 @@ const Edit = () => {
   );
 };
 
-export default Edit;
+export default EditAppointment;
