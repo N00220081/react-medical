@@ -3,16 +3,27 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { useAuth } from "../../utils/useAuth";
 import { useForm } from '@mantine/form';
-import { TextInput, Textarea, Text, Button, Loader } from "@mantine/core";
+import {
+  TextInput,
+  Textarea,
+  Text,
+  Button,
+  Paper,
+  Loader,
+  Group,
+  Stack,
+  Divider,
+  Notification,
+} from "@mantine/core";
 import { DateInput } from "@mantine/dates";
 
-const Edit = () => {
+const EditPatient = () => {
   const { token } = useAuth();
   const navigate = useNavigate();
   const { id } = useParams();
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  // Initialize form with patient fields
   const form = useForm({
     initialValues: {
       first_name: '',
@@ -20,7 +31,7 @@ const Edit = () => {
       email: '',
       phone: '',
       address: '',
-      date_of_birth: '', // Will store as Date for the form
+      date_of_birth: '', // Date for the form
     },
     validate: {
       first_name: (value) =>
@@ -38,7 +49,6 @@ const Edit = () => {
     },
   });
 
-  // Fetch patient data
   useEffect(() => {
     axios
       .get(`https://fed-medical-clinic-api.vercel.app/patients/${id}`, {
@@ -47,38 +57,32 @@ const Edit = () => {
         },
       })
       .then((res) => {
-        // Set form values
         form.setValues({
           first_name: res.data.first_name,
           last_name: res.data.last_name,
           email: res.data.email,
           phone: res.data.phone,
           address: res.data.address,
-          date_of_birth: new Date(res.data.date_of_birth * 1000), // Convert UNIX timestamp to Date
+          date_of_birth: new Date(res.data.date_of_birth), // Convert to Date
         });
         setLoading(false);
       })
       .catch((err) => {
         console.error("Error fetching patient data:", err);
+        setError("Error loading data. Please try again.");
         setLoading(false);
       });
   }, [id, token]);
 
-  // Handle form submission
   const handleSubmit = async () => {
-    console.log("Debug: Appointment ID being sent in the URL:", id);
-  
-    const payload = {
-      appointment_date: Math.floor(
-        form.values.appointment_date.getTime() / 1000
-      ), // Convert Date to UNIX timestamp
-      doctor_id: parseInt(form.values.doctor_id, 10),
-      patient_id: parseInt(form.values.patient_id, 10),
-    };
-  
     try {
+      const payload = {
+        ...form.values,
+        date_of_birth: form.values.date_of_birth.toISOString().split("T")[0], // Format date for the backend
+      };
+
       const res = await axios.patch(
-        `https://fed-medical-clinic-api.vercel.app/appointments/${id}`,
+        `https://fed-medical-clinic-api.vercel.app/patients/${id}`,
         payload,
         {
           headers: {
@@ -86,82 +90,99 @@ const Edit = () => {
           },
         }
       );
-      console.log("Appointment updated successfully:", res.data);
-      navigate(`/appointments/${res.data.id}`);
+
+      navigate(`/patients/${res.data.id}`);
     } catch (err) {
-      console.error("Error updating appointment:", err);
-  
-      if (err.response?.status === 404) {
-        alert("The appointment you are trying to update does not exist.");
-      } else if (err.response?.status === 422) {
+      console.error("Error updating patient:", err);
+
+      if (err.response?.status === 422) {
         const errors = err.response.data.error.issues || [];
         form.setErrors(
           Object.fromEntries(errors.map((error) => [error.path[0], error.message]))
         );
       } else {
-        form.setErrors({
-          general: "An unexpected error occurred. Please try again.",
-        });
+        setError("An unexpected error occurred. Please try again.");
       }
     }
   };
-  
-  
 
   if (loading) {
-    return <Loader />;
+    return (
+      <Group position="center" style={{ marginTop: "2rem" }}>
+        <Loader size="lg" />
+      </Group>
+    );
   }
 
   return (
-    <div>
-      <Text size={24} mb={5}>
+    <Paper
+      shadow="md"
+      radius="md"
+      p="xl"
+      style={{ maxWidth: 600, margin: "auto", marginTop: 40 }}
+    >
+      <Text size="xl" weight={700} mb="sm">
         Edit Patient
       </Text>
+      <Divider my="sm" />
+
+      {error && (
+        <Notification
+          color="red"
+          title="Error"
+          onClose={() => setError("")}
+        >
+          {error}
+        </Notification>
+      )}
+
       <form onSubmit={form.onSubmit(handleSubmit)}>
-        <TextInput
-          withAsterisk
-          label={'First name'}
-          name="first_name"
-          {...form.getInputProps('first_name')}
-        />
-        <TextInput
-          withAsterisk
-          label="Last name"
-          name="last_name"
-          {...form.getInputProps('last_name')}
-        />
-        <TextInput
-          label={'Email'}
-          withAsterisk
-          name="email"
-          {...form.getInputProps('email')}
-        />
-        <TextInput
-          label={'Phone'}
-          name="phone"
-          withAsterisk
-          {...form.getInputProps('phone')}
-        />
-        <DateInput
-          label="Date of Birth"
-          name="date_of_birth"
-          withAsterisk
-          placeholder="Select a date"
-          valueFormat="DD/MM/YYYY"
-          {...form.getInputProps('date_of_birth')}
-        />
-        <Textarea
-          label={'Address'}
-          name="address"
-          withAsterisk
-          {...form.getInputProps('address')}
-        />
-        <Button mt={10} type={'submit'}>
-          Save Changes
-        </Button>
+        <Stack spacing="md">
+          <TextInput
+            withAsterisk
+            label="First Name"
+            placeholder="Enter first name"
+            {...form.getInputProps('first_name')}
+          />
+          <TextInput
+            withAsterisk
+            label="Last Name"
+            placeholder="Enter last name"
+            {...form.getInputProps('last_name')}
+          />
+          <TextInput
+            withAsterisk
+            label="Email"
+            placeholder="Enter email address"
+            {...form.getInputProps('email')}
+          />
+          <TextInput
+            withAsterisk
+            label="Phone"
+            placeholder="Enter phone number"
+            {...form.getInputProps('phone')}
+          />
+          <DateInput
+            withAsterisk
+            label="Date of Birth"
+            placeholder="Select a date"
+            valueFormat="YYYY-MM-DD"
+            {...form.getInputProps('date_of_birth')}
+          />
+          <Textarea
+            withAsterisk
+            label="Address"
+            placeholder="Enter address"
+            {...form.getInputProps('address')}
+          />
+
+          <Group position="right" mt="md">
+            <Button type="submit">Save Changes</Button>
+          </Group>
+        </Stack>
       </form>
-    </div>
+    </Paper>
   );
 };
 
-export default Edit;
+export default EditPatient;

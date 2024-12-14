@@ -1,48 +1,87 @@
 import { useEffect, useState } from "react";
-import axios from 'axios'
-import { useParams } from "react-router-dom";
-import { Link } from "react-router-dom";
+import axios from "axios";
+import { useParams, Link } from "react-router-dom";
 import { useAuth } from "../../utils/useAuth";
+import {
+  Text,
+  Title,
+  Button,
+  Stack,
+  Group,
+  Loader,
+  Container,
+  Divider,
+} from "@mantine/core";
 
 const SinglePatient = () => {
-    // No longer pulling this directly from localStorage, the context does that for us, and stores it in its state
-    const {token} = useAuth();
+  const { token } = useAuth();
+  const [patient, setPatient] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-    const [patient, setPatient] = useState(null)
+  const { id } = useParams();
 
-    const { id } = useParams();
+  useEffect(() => {
+    axios
+      .get(`https://fed-medical-clinic-api.vercel.app/patients/${id}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+      .then((res) => {
+        setPatient(res.data);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error("Error fetching patient data:", err);
+        setLoading(false);
+      });
+  }, [id, token]);
 
-    useEffect(() => {
-        axios.get(`https://fed-medical-clinic-api.vercel.app/patients/${id}`, {
-            headers: {
-                Authorization: `Bearer ${token}`
-            }
-        })
-            .then((res) => {
-                console.log(res)
-                setPatient(res.data)
-            })  
-            .catch((err) => {
-                console.error(err)
-            })
-    }, [])
+  if (loading) {
+    return (
+      <Group position="center" style={{ marginTop: "2rem" }}>
+        <Loader size="lg" />
+      </Group>
+    );
+  }
 
-    if(!patient){
-        return 'Loading...'
-    }
+  if (!patient) {
+    return (
+      <Text color="red" align="center" style={{ marginTop: "2rem" }}>
+        Unable to load patient data. Please try again later.
+      </Text>
+    );
+  }
 
-    return patient && (
-        <div>
-            <Link to={`/patients/${id}/edit`}>
-                Edit patient
-            </Link>
-            <h1>{patient.first_name} {patient.last_name}</h1>
-            <p>email: {patient.email}</p>
-            <p>Phone number: {patient.phone}</p>
-            <p>Date of Birth: {patient.date_of_birth}</p>
-            <p>Address: {patient.address}</p>
-        </div>
-    )
-}
+  return (
+    <Container size="md" style={{ marginTop: 40 }}>
+      <Group position="apart" align="center" mb="md">
+        <Title order={1}>
+          {patient.first_name} {patient.last_name}
+        </Title>
+        <Button component={Link} to={`/patients/${id}/edit`} variant="outline">
+          Edit Patient
+        </Button>
+      </Group>
+
+      <Divider my="md" />
+
+      <Stack spacing="md">
+        <Text>
+          <strong>Email:</strong> {patient.email}
+        </Text>
+        <Text>
+          <strong>Phone Number:</strong> {patient.phone}
+        </Text>
+        <Text>
+          <strong>Date of Birth:</strong> {new Date(patient.date_of_birth).toLocaleDateString()}
+        </Text>
+        <Text>
+          <strong>Address:</strong> {patient.address}
+        </Text>
+      </Stack>
+    </Container>
+  );
+};
 
 export default SinglePatient;

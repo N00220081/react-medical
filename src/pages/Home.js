@@ -111,12 +111,7 @@ const Home = () => {
       <Title order={2} mb="lg" align="center">
         Admin Dashboard
       </Title>
-      <Flex justify="Flex-start" gap="md" mb="md">
-        <Button onClick={() => navigate("/doctors/create")}>Create Doctor</Button>
-        <Button onClick={() => navigate("/patients/create")}>Create Patient</Button>
-        <Button onClick={() => navigate("/appointments/create")}>Create Appointment</Button>
-      </Flex>
-
+      
       <Divider my="xl" label="Doctors" labelPosition="center" />
      
 

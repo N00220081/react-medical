@@ -2,7 +2,16 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../utils/useAuth";
 import { useForm } from "@mantine/form";
-import { Text, Button, Select } from "@mantine/core";
+import {
+  Text,
+  Button,
+  Select,
+  Paper,
+  Group,
+  Stack,
+  Notification,
+  Divider,
+} from "@mantine/core";
 import { DateInput } from "@mantine/dates";
 import { useEffect, useState } from "react";
 
@@ -11,6 +20,7 @@ const Create = () => {
   const navigate = useNavigate();
   const [doctors, setDoctors] = useState([]);
   const [patients, setPatients] = useState([]);
+  const [error, setError] = useState("");
 
   const form = useForm({
     initialValues: {
@@ -41,7 +51,7 @@ const Create = () => {
         setDoctors(doctorsRes.data);
         setPatients(patientsRes.data);
       } catch (err) {
-        console.error("Error fetching doctors or patients:", err);
+        setError("Error fetching doctors or patients. Please try again.");
       }
     };
 
@@ -67,11 +77,8 @@ const Create = () => {
           },
         }
       );
-      console.log("Appointment created successfully:", res.data);
       navigate(`/appointments/${res.data.id}`);
     } catch (err) {
-      console.error("Error creating appointment:", err);
-
       if (err.response?.status === 422) {
         const errors = err.response.data.error.issues || [];
         form.setErrors(
@@ -80,54 +87,70 @@ const Create = () => {
           )
         );
       } else {
-        form.setErrors({
-          general: "An unexpected error occurred. Please try again.",
-        });
+        setError("An unexpected error occurred. Please try again.");
       }
     }
   };
 
   return (
-    <div>
-      <Text size={24} mb={5}>
+    <Paper
+      shadow="md"
+      radius="md"
+      p="xl"
+      style={{ maxWidth: 600, margin: "auto", marginTop: 40 }}
+    >
+      <Text size="xl" weight={700} mb="sm">
         Create an Appointment
       </Text>
+      <Divider my="sm" />
+
+      {error && (
+        <Notification color="red" title="Error" onClose={() => setError("")}>
+          {error}
+        </Notification>
+      )}
+
       <form onSubmit={form.onSubmit(handleSubmit)}>
-        <DateInput
-          label="Appointment Date"
-          name="appointment_date"
-          withAsterisk
-          placeholder="Select a date"
-          valueFormat="YYYY-MM-DD"
-          {...form.getInputProps("appointment_date")}
-        />
-        <Select
-          label="Doctor"
-          name="doctor_id"
-          withAsterisk
-          placeholder="Select a doctor"
-          data={doctors.map((doctor) => ({
-            value: doctor.id.toString(),
-            label: `Dr. ${doctor.first_name} ${doctor.last_name}`,
-          }))}
-          {...form.getInputProps("doctor_id")}
-        />
-        <Select
-          label="Patient"
-          name="patient_id"
-          withAsterisk
-          placeholder="Select a patient"
-          data={patients.map((patient) => ({
-            value: patient.id.toString(),
-            label: `${patient.first_name} ${patient.last_name}`,
-          }))}
-          {...form.getInputProps("patient_id")}
-        />
-        <Button mt={10} type="submit">
-          Submit
-        </Button>
+        <Stack spacing="md">
+          <DateInput
+            label="Appointment Date"
+            name="appointment_date"
+            withAsterisk
+            placeholder="Select a date"
+            valueFormat="YYYY-MM-DD"
+            {...form.getInputProps("appointment_date")}
+          />
+
+          <Select
+            label="Doctor"
+            name="doctor_id"
+            withAsterisk
+            placeholder="Select a doctor"
+            data={doctors.map((doctor) => ({
+              value: doctor.id.toString(),
+              label: `Dr. ${doctor.first_name} ${doctor.last_name}`,
+            }))}
+            {...form.getInputProps("doctor_id")}
+          />
+
+          <Select
+            label="Patient"
+            name="patient_id"
+            withAsterisk
+            placeholder="Select a patient"
+            data={patients.map((patient) => ({
+              value: patient.id.toString(),
+              label: `${patient.first_name} ${patient.last_name}`,
+            }))}
+            {...form.getInputProps("patient_id")}
+          />
+
+          <Group position="right" mt="md">
+            <Button type="submit">Submit</Button>
+          </Group>
+        </Stack>
       </form>
-    </div>
+    </Paper>
   );
 };
 
